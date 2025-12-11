@@ -94,21 +94,32 @@ export default function NotesPage() {
             saving={saving}
           />
         )}
-        {editing && (
-          <NoteEditor
-            initial={{ title: editing.title, content: editing.content }}
-            onCancel={() => setEditing(null)}
-            onSave={(data) => update(editing, data)}
-            saving={saving}
-          />
-        )}
         {loading ? (
           <p className="text-neutral-400">Loading…</p>
         ) : (
           <div className="grid gap-3">
-            {notes.map((note) => (
-              <NoteCard key={note.id} note={note} onEdit={setEditing} onDelete={remove} />
-            ))}
+            {notes.map((note) => {
+              const isEditing = editing?.id === note.id;
+              if (isEditing) {
+                return (
+                  <NoteEditor
+                    key={note.id}
+                    initial={{ title: note.title, content: note.content }}
+                    onCancel={() => setEditing(null)}
+                    onSave={(data) => update(note, data)}
+                    saving={saving}
+                  />
+                );
+              }
+              return (
+                <NoteCard
+                  key={note.id}
+                  note={note}
+                  onEdit={(n) => { setCreating(false); setEditing(n); }}
+                  onDelete={remove}
+                />
+              );
+            })}
             {notes.length === 0 && <p className="text-neutral-400">No notes yet. Create your first one.</p>}
           </div>
         )}
