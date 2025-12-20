@@ -2,15 +2,22 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getToken } from '@/lib/auth';
+import api from '@/lib/apiClient';
 
 export function useAuthRequired() {
 	const router = useRouter();
 	useEffect(() => {
-		const token = getToken();
-		if (!token) {
-			router.replace('/login');
-		}
+		let mounted = true;
+		(async () => {
+			try {
+				await api.get('/auth/me');
+			} catch {
+				if (mounted) router.replace('/login');
+			}
+		})();
+		return () => {
+			mounted = false;
+		};
 	}, [router]);
 }
 

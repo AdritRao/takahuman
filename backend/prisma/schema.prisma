@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -12,7 +12,9 @@ model User {
   email        String    @unique
   passwordHash String
   createdAt    DateTime  @default(now())
+  tokenVersion Int       @default(0)
   notes        Note[]
+  memberships  Membership[]
 }
 
 model Note {
@@ -23,6 +25,55 @@ model Note {
   updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId Int
+  createdByUserId Int
+
+  @@index([organizationId, updatedAt])
+  @@index([userId, updatedAt])
+  @@index([organizationId, userId, updatedAt])
+}
+
+model Organization {
+  id        Int       @id @default(autoincrement())
+  name      String
+  createdAt DateTime  @default(now())
+  members   Membership[]
+  notes     Note[]
+  invites   Invite[]
+}
+
+model Membership {
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId Int
+  role           Role
+  createdAt      DateTime @default(now())
+
+  @@id([userId, organizationId])
+  @@index([organizationId, role])
+  @@index([userId, role])
+}
+
+model Invite {
+  id              Int          @id @default(autoincrement())
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId  Int
+  email           String
+  role            Role
+  token           String       @unique
+  expiresAt       DateTime
+  acceptedAt      DateTime?
+  createdAt       DateTime     @default(now())
+
+  @@unique([organizationId, email])
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  MEMBER
 }
 
 

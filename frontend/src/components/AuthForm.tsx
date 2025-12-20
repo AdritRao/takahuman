@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/apiClient';
-import { setToken } from '@/lib/auth';
 
 type Mode = 'login' | 'signup';
 
@@ -21,7 +20,6 @@ export default function AuthForm({ mode }: { mode: Mode }) {
 		try {
 			const url = mode === 'login' ? '/auth/login' : '/auth/signup';
 			const res = await api.post(url, { email, password });
-			setToken(res.data.token);
 			router.replace('/notes');
 		} catch (err: any) {
 			setError(err?.response?.data?.error ?? 'Something went wrong');

@@ -1,28 +1,33 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import { config } from '../config';
+import { prisma } from '../lib/prisma';
+import { verifyAccessToken } from '../lib/jwt';
 
-export interface JwtUser {
-	id: number;
-	email: string;
-}
+export async function requireAuth(req: Request, res: Response, next: NextFunction) {
+  try {
+    const token =
+      req.cookies?.[config.ACCESS_COOKIE_NAME] ||
+      (req.headers.authorization?.startsWith('Bearer ')
+        ? req.headers.authorization.slice('Bearer '.length)
+        : undefined);
+    if (!token) return res.status(401).json({ error: 'Unauthorized' });
 
-export function requireAuth(req: Request, res: Response, next: NextFunction) {
-	try {
-		const header = req.headers['authorization'];
-		if (!header || !header.startsWith('Bearer ')) {
-			return res.status(401).json({ error: 'Unauthorized' });
-		}
-		const token = header.substring('Bearer '.length);
-		const secret = process.env.JWT_SECRET;
-		if (!secret) {
-			return res.status(500).json({ error: 'Server misconfiguration' });
-		}
-		const payload = jwt.verify(token, secret) as JwtUser;
-		req.user = payload;
-		next();
-	} catch (_e) {
-		return res.status(401).json({ error: 'Unauthorized' });
-	}
+    const payload = verifyAccessToken(token);
+    const user = await prisma.user.findUnique({
+      where: { id: payload.sub },
+      select: { id: true, email: true, tokenVersion: true },
+    });
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    if (user.tokenVersion !== payload.tokenVersion) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    req.user = { id: user.id, email: user.email };
+    next();
+  } catch {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
 }
 
 
